@@ -28,7 +28,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 enum layers {
     _BASE_WIN,    // Windows layer
     _BASE_MAC,  // Mac layer
-    _NUM,     // numbers/symbols
+    _NUM_WIN,     // numbers/symbols
+    _NUM_MAC,
     _FUN,     // fn keys
     _NAV,     // navigation keys
 };
@@ -73,7 +74,10 @@ bool oled_task_user(void) {
             case _BASE_WIN:
                 snprintf(layer_name, sizeof(layer_name), "WIN");
                 break;
-            case _NUM:
+            case _NUM_WIN:
+                snprintf(layer_name, sizeof(layer_name), "NUM");
+                break;
+            case _NUM_MAC:
                 snprintf(layer_name, sizeof(layer_name), "NUM");
                 break;
             case _FUN:
@@ -106,20 +110,27 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,                    KC_Y,     KC_U,    KC_I,    KC_O,    KC_P,
     GUI_T(KC_A), ALT_T(KC_S), CTL_T(KC_D), KC_F, KC_G,    KC_H,    KC_J, CTL_T(KC_K), ALT_T(KC_L), GUI_T(KC_BSPC),
     KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,                    KC_N,     KC_M,    KC_COMM, KC_DOT,  KC_SLSH,
-                    MO(_FUN), MO(_NUM),  KC_LSFT,               KC_SPC,  KC_ENT, LT(_NAV, KC_TAB) 
+                    MO(_FUN), KC_ENT,  KC_LSFT,               KC_SPC,  MO(_NUM_MAC), LT(_NAV, KC_TAB) 
   ),
 
   [_BASE_WIN] = LAYOUT_split_3x5_3(
     KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,                    KC_Y,     KC_U,    KC_I,    KC_O,    KC_P,
     CTL_T(KC_A), GUI_T(KC_S), ALT_T(KC_D), KC_F, KC_G,    KC_H,    KC_J, ALT_T(KC_K), GUI_T(KC_L), CTL_T(KC_BSPC),
     KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,                    KC_N,     KC_M,    KC_COMM, KC_DOT,  KC_SLSH,
-                    MO(_FUN), MO(_NUM),  KC_LSFT,               KC_SPC,  KC_ENT, LT(_NAV, KC_TAB) 
+                    MO(_FUN), KC_ENT,  KC_LSFT,               KC_SPC,  MO(_NUM_WIN), LT(_NAV, KC_TAB) 
   ),
 
-  [_NUM] = LAYOUT_split_3x5_3(
+  [_NUM_MAC] = LAYOUT_split_3x5_3(
     KC_1,    KC_2,    KC_3,     KC_4,   KC_5,                    KC_6, KC_7,    KC_8,   KC_9,    KC_0,
-    GUI_T(KC_QUOT), ALT_T(KC_SCLN), CTL_T(KC_MINS), KC_EQL,     KC_TRNS, KC_TRNS, KC_TRNS, CTL_T(KC_LBRC), ALT_T(KC_RBRC), GUI_T(KC_PIPE),
-    KC_GRV, KC_TRNS, KC_TRNS,  KC_TRNS,    KC_TRNS,               KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,   KC_TRNS,
+    GUI_T(KC_QUOT), ALT_T(KC_SCLN), CTL_T(KC_MINS), KC_EQL,     KC_TRNS, KC_TRNS, KC_TRNS, CTL_T(KC_LBRC), ALT_T(KC_RBRC), KC_TRNS,
+    KC_GRV, KC_PIPE, KC_TRNS,  KC_TRNS,    KC_TRNS,               KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,   KC_TRNS,
+                      KC_TRNS,   KC_TRNS,    KC_TRNS,                KC_TRNS, KC_TRNS, KC_TRNS
+  ),
+
+  [_NUM_WIN] = LAYOUT_split_3x5_3(
+    KC_1,    KC_2,    KC_3,     KC_4,   KC_5,                    KC_6, KC_7,    KC_8,   KC_9,    KC_0,
+    CTL_T(KC_QUOT), GUI_T(KC_SCLN), ALT_T(KC_MINS), KC_EQL,     KC_TRNS, KC_TRNS, KC_TRNS, ALT_T(KC_LBRC), GUI_T(KC_RBRC), KC_TRNS,
+    KC_GRV, KC_PIPE, KC_TRNS,  KC_TRNS,    KC_TRNS,               KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,   KC_TRNS,
                       KC_TRNS,   KC_TRNS,    KC_TRNS,                KC_TRNS, KC_TRNS, KC_TRNS
   ),
 
@@ -140,8 +151,20 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     switch (keycode) {
-        case KC_BSPC:
-            if (record->event.pressed) {
+        case GUI_T(KC_BSPC):
+            if (record->tap.count && record->event.pressed) {
+                if (get_mods() & MOD_MASK_SHIFT) {
+                    register_code(KC_DEL);  // If Shift is held, register Delete key
+                } else {
+                    register_code(KC_BSPC);  // Otherwise, register Backspace
+                }
+            } else {
+                unregister_code(KC_BSPC);  // Unregister backspace
+                unregister_code(KC_DEL);   // Unregister delete
+            }
+            return false;  // Skip all further processing of KC_BSPC
+        case CTL_T(KC_BSPC):
+            if (record->tap.count && record->event.pressed) {
                 if (get_mods() & MOD_MASK_SHIFT) {
                     register_code(KC_DEL);  // If Shift is held, register Delete key
                 } else {
