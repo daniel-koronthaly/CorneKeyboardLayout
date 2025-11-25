@@ -47,7 +47,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // See https://github.com/qmk/qmk_firmware/blob/c4551d7ef1ed2c1069f23cc8499b7c7fc30f3ecf/users/drashna/config.h#L32
 #define SPLIT_TRANSACTION_IDS_USER RPC_ID_USER_KEYMAP_SYNC
 
-
+#define PERMISSIVE_HOLD
 // Setting this to ≤100 makes home-row mods very hard to use since I end up
 // holding a key naturally for 100 ms sometimes (especially with my LH).
 // However, having it at the default makes modifier keys and the mouse a little
