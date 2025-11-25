@@ -165,14 +165,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return false;  // Skip all further processing of KC_BSPC
         case CTL_T(KC_BSPC):
             if (record->tap.count && record->event.pressed) {
-                if (get_mods() & MOD_MASK_SHIFT) {
-                    register_code(KC_DEL);  // If Shift is held, register Delete key
+                uint8_t mods = get_mods();
+                if (mods & MOD_MASK_SHIFT) {
+                    clear_mods();       // temporarily clear Shift
+                    tap_code(KC_DEL);   // send Delete
+                    set_mods(mods);     // restore Shift
                 } else {
-                    register_code(KC_BSPC);  // Otherwise, register Backspace
+                    tap_code(KC_BSPC);
                 }
-            } else {
-                unregister_code(KC_BSPC);  // Unregister backspace
-                unregister_code(KC_DEL);   // Unregister delete
             }
             return false;  // Skip all further processing of KC_BSPC
         default:
