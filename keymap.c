@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include QMK_KEYBOARD_H
 #include "version.h"
 #include "transactions.h"
+#include "quantum/mousekey.h"
 #include <stdio.h>
 
 #ifdef OLED_ENABLE
@@ -32,6 +33,12 @@ enum layers {
     _NUM_MAC,
     _FUN,     // fn keys
     _NAV,     // navigation keys
+    _MOUSE // mouse movement layer!
+};
+
+enum custom_keycodes {
+    MS_SPEED_UP = SAFE_RANGE,
+    MS_SPEED_DOWN,
 };
 
 #define ANIM_INVERT false
@@ -86,6 +93,9 @@ bool oled_task_user(void) {
             case _NAV:
                 snprintf(layer_name, sizeof(layer_name), "NAV");
                 break;
+            case _MOUSE:
+                snprintf(layer_name, sizeof(layer_name), "MOU");
+                break;
             default:
                 snprintf(layer_name, sizeof(layer_name), "???");
                 break;
@@ -136,46 +146,46 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
   [_FUN] = LAYOUT_split_3x5_3(
     KC_F1,    KC_F2,    KC_F3,     KC_F4,   KC_F5,               KC_F6, KC_F7,    KC_F8,   KC_F9,    KC_F10,
-    KC_TRNS, KC_TRNS, KC_TRNS,  KC_TRNS,     KC_TRNS,             KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,   KC_TRNS,
+    KC_TRNS, KC_TRNS, KC_TRNS,  KC_TRNS,     KC_TRNS,             TG(_MOUSE), KC_TRNS, KC_TRNS, KC_TRNS,   KC_TRNS,
     KC_TRNS, KC_TRNS, KC_TRNS,  KC_TRNS,    KC_TRNS,               KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,   KC_TRNS,
                       KC_TRNS,   KC_TRNS,    KC_TRNS,                KC_TRNS, KC_TRNS, KC_TRNS
   ),
 
   [_NAV] = LAYOUT_split_3x5_3(
-    KC_ESC,   KC_TRNS,    KC_TRNS,    KC_TRNS,    KC_TRNS,        KC_TRNS,     KC_TRNS,    KC_UP,    KC_TRNS,  KC_TRNS,
+    KC_ESC,   KC_TRNS,    KC_TRNS,    KC_TRNS,    KC_TRNS,        KC_TRNS,     KC_TRNS,    KC_UP,    KC_TRNS,  KC_DEL,
     KC_MPRV,   KC_MNXT,    KC_BRIU,    KC_BRID,    KC_TRNS,        KC_TRNS,     KC_LEFT,    KC_DOWN,  KC_RIGHT, KC_TRNS,
     KC_VOLU,   KC_VOLD,    KC_MSTP,    KC_MPLY,    KC_TRNS,         KC_TRNS,     KC_TRNS,    KC_TRNS,  TO(_BASE_MAC),  TO(_BASE_WIN),
                     KC_TRNS, KC_TRNS,  KC_TRNS,                     KC_TRNS,  KC_TRNS, KC_TRNS
   ),
+
+  [_MOUSE] = LAYOUT_split_3x5_3(
+    KC_TRNS,   KC_TRNS,    KC_TRNS,    KC_TRNS,    KC_TRNS,        KC_TRNS,     KC_MS_WH_UP,    KC_MS_UP,    KC_MS_WH_DOWN,  MS_SPEED_UP,
+    KC_TRNS,   KC_TRNS,    KC_TRNS,    KC_TRNS,    KC_TRNS,        TG(_MOUSE),     KC_MS_LEFT,    KC_MS_DOWN,  KC_MS_RIGHT, KC_TRNS,
+    KC_TRNS,   KC_TRNS,    KC_TRNS,    KC_TRNS,    KC_TRNS,         KC_TRNS,     KC_TRNS,    KC_TRNS,  KC_TRNS,  MS_SPEED_DOWN,
+                    KC_TRNS, KC_TRNS,  KC_TRNS,                     KC_MS_BTN1,  KC_MS_BTN2, KC_TRNS
+  ),
 };
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-    switch (keycode) {
-        case GUI_T(KC_BSPC):
-            if (record->tap.count && record->event.pressed) {
-                if (get_mods() & MOD_MASK_SHIFT) {
-                    register_code(KC_DEL);  // If Shift is held, register Delete key
-                } else {
-                    register_code(KC_BSPC);  // Otherwise, register Backspace
-                }
-            } else {
-                unregister_code(KC_BSPC);  // Unregister backspace
-                unregister_code(KC_DEL);   // Unregister delete
-            }
-            return false;  // Skip all further processing of KC_BSPC
-        case CTL_T(KC_BSPC):
-            if (record->tap.count && record->event.pressed) {
-                uint8_t mods = get_mods();
-                if (mods & MOD_MASK_SHIFT) {
-                    clear_mods();       // temporarily clear Shift
-                    tap_code(KC_DEL);   // send Delete
-                    set_mods(mods);     // restore Shift
-                } else {
-                    tap_code(KC_BSPC);
-                }
-            }
-            return false;  // Skip all further processing of KC_BSPC
-        default:
-            return true;  // Process all other keycodes normally
+    static uint8_t mouse_speed;
+    static bool initialized = false;
+
+    if (!initialized) {
+        mouse_speed = mk_max_speed; // initialize at runtime
+        initialized = true;
     }
+
+    if (!record->event.pressed) return true;
+
+    switch (keycode) {
+        case MS_SPEED_UP:
+            if (mouse_speed < 7) mouse_speed++;
+            mk_max_speed = mouse_speed;  // <-- adjust global variable
+            break;
+        case MS_SPEED_DOWN:
+            if (mouse_speed > 1) mouse_speed--;
+            mk_max_speed = mouse_speed;  // <-- adjust global variable
+            break;
+    }
+    return true;
 }
